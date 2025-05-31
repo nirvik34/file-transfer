@@ -3,4 +3,5 @@ uvicorn
 sqlalchemy
 qrcode
 python-multipart
-pydantic 
+pydantic
+Pillow
