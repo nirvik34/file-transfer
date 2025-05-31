@@ -13,11 +13,13 @@ import time
 app = FastAPI()
 
 app.add_middleware(
-  CORSMiddleware,
-  allow_origins=["*"],  # Allow all origins for now, or specify your frontend URL
-  allow_credentials=True,
-  allow_methods=["*"],
-  allow_headers=["*"],
+    CORSMiddleware,
+    allow_origins=[
+        "https://file-transfer-cctd.vercel.app"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # In-memory file storage: {code: {filename, content, expiry, max_downloads, downloads}}
@@ -70,7 +72,7 @@ def download_file(code: str):
         raise HTTPException(status_code=410, detail="Max downloads reached")
     file_meta["downloads"] += 1
     headers = {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': 'https://file-transfer-cctd.vercel.app',
         'Access-Control-Allow-Credentials': 'true',
         'Content-Disposition': f'attachment; filename="{file_meta["filename"]}"'
     }
