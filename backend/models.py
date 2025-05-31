@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime
-from backend import database
+import database
 import datetime
 
 class FileMeta(database.Base):
