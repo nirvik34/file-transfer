@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+sqlalchemy
+qrcode
+python-multipart
+pydantic 
