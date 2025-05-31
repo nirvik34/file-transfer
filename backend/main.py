@@ -13,11 +13,11 @@ import time
 app = FastAPI()
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now, or specify your frontend URL
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+  CORSMiddleware,
+  allow_origins=["*"],  # Allow all origins for now, or specify your frontend URL
+  allow_credentials=True,
+  allow_methods=["*"],
+  allow_headers=["*"],
 )
 
 # In-memory file storage: {code: {filename, content, expiry, max_downloads, downloads}}
