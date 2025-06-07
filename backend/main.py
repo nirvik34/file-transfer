@@ -8,13 +8,18 @@ from datetime import datetime, timedelta
 import threading
 import time
 import qrcode
+import random
+from urllib.parse import quote
 
 app = FastAPI()
 
 # CORS setup for frontend connection
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://file-transfer-cctd.vercel.app"],
+    allow_origins=[
+        "https://file-transfer-cctd.vercel.app",
+        "http://localhost:5173"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,7 +38,8 @@ async def upload_file(
     expiry_minutes: int = Form(10),
     max_downloads: int = Form(None)
 ):
-    code = uuid.uuid4().hex[:8]
+    # Generate a random 4-digit PIN as string, zero-padded
+    code = f"{random.randint(0, 9999):04d}"
     content = await file.read()
     expiry = datetime.utcnow() + timedelta(minutes=expiry_minutes)
 
@@ -75,10 +81,13 @@ def download_file(code: str):
 
     file_meta["downloads"] += 1
 
+    filename = file_meta["filename"]
+    # Use RFC 5987 encoding for non-ASCII filenames
+    quoted_filename = quote(filename)
     headers = {
         'Access-Control-Allow-Origin': 'https://file-transfer-cctd.vercel.app',
         'Access-Control-Allow-Credentials': 'true',
-        'Content-Disposition': f'attachment; filename="{file_meta["filename"]}"'
+        'Content-Disposition': f'attachment; filename="{filename}"; filename*=UTF-8''{quoted_filename}'
     }
 
     return StreamingResponse(io.BytesIO(file_meta["content"]), media_type='application/octet-stream', headers=headers)

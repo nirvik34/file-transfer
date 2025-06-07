@@ -30,12 +30,9 @@ html, body, #root {
 }
 body {
   margin: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 100vw;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #e0f2fe 0%, #90cdf4 100%);
+  font-family: 'Arial', sans-serif;
+  background-color: #120328;
+  color: white;
 }
 
 h1 {
