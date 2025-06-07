@@ -100,7 +100,10 @@ def download_file(code: str):
     filename = meta['filename']
     quoted_filename = quote(filename)
     headers = {
-        'Access-Control-Allow-Origin': 'https://file-transfer-peach.vercel.app',
+        'Access-Control-Allow-Origin': ','.join([
+            'https://file-transfer-peach.vercel.app',
+            'https://file-transfer-xw2e.onrender.com'
+        ]),
         'Access-Control-Allow-Credentials': 'true',
         'Content-Disposition': f'attachment; filename="{filename}"; filename*=UTF-8''{quoted_filename}'
     }
