@@ -5,3 +5,4 @@ qrcode
 python-multipart
 pydantic
 Pillow
+firebase-admin
