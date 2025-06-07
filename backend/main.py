@@ -19,7 +19,10 @@ app = FastAPI()
 # CORS setup for production frontend connection
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://file-transfer-peach.vercel.app"],  # Only allow new production frontend
+    allow_origins=[
+        "https://file-transfer-peach.vercel.app",
+        "https://file-transfer-xw2e.onrender.com"
+    ],  # Allow both frontend and backend origins for CORS
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,7 +66,7 @@ async def upload_file(
         'downloads': 0
     })
     # Generate QR code as base64 (use production backend URL)
-    prod_download_url = f"https://file-transfer-na50.onrender.com/download/{code}"
+    prod_download_url = f"https://file-transfer-xw2e.onrender.com/download/{code}"
     qr = qrcode.make(prod_download_url)
     buf = io.BytesIO()
     qr.save(buf, format="PNG")
