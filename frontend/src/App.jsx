@@ -4,7 +4,7 @@ import '../public/style.css'
 import uploadCloud from './assets/pngwing.com.png';
 
 // const BACKEND_URL = "https://file-transfer-na50.onrender.com";
-const BACKEND_URL = "http://localhost:8000";
+const BACKEND_URL = "https://file-transfer-xw2e.onrender.com";
 
 function App() {
   const transferRef = useRef(null)
