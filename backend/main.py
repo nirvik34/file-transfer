@@ -10,23 +10,31 @@ import time
 import qrcode
 import random
 from urllib.parse import quote
+import firebase_admin
+from firebase_admin import credentials, firestore, storage as fb_storage
+import os
 
 app = FastAPI()
 
-# CORS setup for frontend connection
+# CORS setup for production frontend connection
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://file-transfer-cctd.vercel.app",
-        "http://localhost:5173"
-    ],
+    allow_origins=["https://file-transfer-peach.vercel.app"],  # Only allow new production frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# In-memory file storage
-file_store = {}  # code: {filename, content, expiry, max_downloads, downloads}
+# Use Render's secret file path for Firebase credentials
+FIREBASE_CRED_PATH = "/etc/secrets/firebase-service-account.json"
+# Initialize Firebase
+if not firebase_admin._apps:
+    cred = credentials.Certificate(FIREBASE_CRED_PATH)
+    firebase_admin.initialize_app(cred, {
+        'storageBucket': 'file-transfer-pin.appspot.com'
+    })
+db = firestore.client()
+bucket = fb_storage.bucket()
 
 @app.get("/")
 def read_root():
@@ -38,67 +46,74 @@ async def upload_file(
     expiry_minutes: int = Form(10),
     max_downloads: int = Form(None)
 ):
-    # Generate a random 4-digit PIN as string, zero-padded
     code = f"{random.randint(0, 9999):04d}"
     content = await file.read()
     expiry = datetime.utcnow() + timedelta(minutes=expiry_minutes)
-
-    file_store[code] = {
-        "filename": file.filename,
-        "content": content,
-        "expiry": expiry,
-        "max_downloads": max_downloads,
-        "downloads": 0
-    }
-
-    # Generate QR code as base64
-    qr = qrcode.make(f"https://file-transfer-na50.onrender.com/download/{code}")
+    filename = file.filename
+    # Upload file to Firebase Storage
+    blob = bucket.blob(f"uploads/{code}_{filename}")
+    blob.upload_from_string(content)
+    blob.make_public()
+    # Store metadata in Firestore
+    db.collection('files').document(code).set({
+        'filename': filename,
+        'storage_path': blob.name,
+        'expiry': expiry.isoformat(),
+        'max_downloads': max_downloads,
+        'downloads': 0
+    })
+    # Generate QR code as base64 (use production backend URL)
+    prod_download_url = f"https://file-transfer-na50.onrender.com/download/{code}"
+    qr = qrcode.make(prod_download_url)
     buf = io.BytesIO()
     qr.save(buf, format="PNG")
     qr_b64 = base64.b64encode(buf.getvalue()).decode()
     qr_data_url = f"data:image/png;base64,{qr_b64}"
-
     return JSONResponse({
         "code": code,
         "qr": qr_data_url,
-        "download_url": f"https://file-transfer-na50.onrender.com/download/{code}"
+        "download_url": prod_download_url
     })
 
 @app.get("/download/{code}")
 def download_file(code: str):
-    file_meta = file_store.get(code)
-    if not file_meta:
+    doc = db.collection('files').document(code).get()
+    if not doc.exists:
         raise HTTPException(status_code=404, detail="File not found")
-
+    meta = doc.to_dict()
     now = datetime.utcnow()
-    if file_meta["expiry"] < now:
-        del file_store[code]
+    expiry = datetime.fromisoformat(meta['expiry'])
+    if expiry < now:
+        db.collection('files').document(code).delete()
         raise HTTPException(status_code=410, detail="File expired")
-
-    if file_meta["max_downloads"] is not None and file_meta["downloads"] >= int(file_meta["max_downloads"]):
-        del file_store[code]
+    if meta['max_downloads'] is not None and meta['downloads'] >= int(meta['max_downloads']):
+        db.collection('files').document(code).delete()
         raise HTTPException(status_code=410, detail="Max downloads reached")
-
-    file_meta["downloads"] += 1
-
-    filename = file_meta["filename"]
-    # Use RFC 5987 encoding for non-ASCII filenames
+    # Increment download count
+    db.collection('files').document(code).update({'downloads': firestore.Increment(1)})
+    # Download file from Firebase Storage
+    blob = bucket.blob(meta['storage_path'])
+    content = blob.download_as_bytes()
+    filename = meta['filename']
     quoted_filename = quote(filename)
     headers = {
-        'Access-Control-Allow-Origin': 'https://file-transfer-cctd.vercel.app',
+        'Access-Control-Allow-Origin': 'https://file-transfer-peach.vercel.app',
         'Access-Control-Allow-Credentials': 'true',
         'Content-Disposition': f'attachment; filename="{filename}"; filename*=UTF-8''{quoted_filename}'
     }
+    return StreamingResponse(io.BytesIO(content), media_type='application/octet-stream', headers=headers)
 
-    return StreamingResponse(io.BytesIO(file_meta["content"]), media_type='application/octet-stream', headers=headers)
+@app.get("/test-cors")
+def test_cors():
+    return {"message": "CORS is working!"}
 
 # Background thread to clean up expired files
 def cleanup_expired_files():
     while True:
         now = datetime.utcnow()
-        expired = [code for code, meta in file_store.items() if meta["expiry"] < now]
-        for code in expired:
-            del file_store[code]
+        expired = db.collection('files').where('expiry', '<', now).stream()
+        for doc in expired:
+            db.collection('files').document(doc.id).delete()
         time.sleep(60)
 
 # Start background cleanup thread
