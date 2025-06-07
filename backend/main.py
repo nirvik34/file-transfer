@@ -53,8 +53,9 @@ async def upload_file(
         # Upload file to Supabase Storage
         storage_path = f"uploads/{code}_{filename}"
         res = supabase.storage.from_("uploads").upload(storage_path, content, file_options={"content-type": file.content_type})
-        if not res or res.get("error"):
-            raise Exception(f"Supabase upload error: {res.get('error') if res else 'Unknown error'}")
+        # Only check for error if the response has an 'error' attribute
+        if hasattr(res, "error") and res.error:
+            raise Exception(f"Supabase upload error: {res.error}")
         # Store metadata in memory
         file_metadata[code] = {
             'filename': filename,
@@ -116,6 +117,8 @@ def download_file(code: str):
 def test_cors():
     return {"message": "CORS is working!"}
 
+# Background thread to clean up expired files
+# Use in-memory metadata for Supabase version
 
 def cleanup_expired_files():
     while True:
