@@ -109,7 +109,8 @@ def download_file(code: str):
             'https://file-transfer-xw2e.onrender.com'
         ]),
         'Access-Control-Allow-Credentials': 'true',
-        'Content-Disposition': f'attachment; filename="{filename}"; filename*=UTF-8''{quoted_filename}'
+        'Content-Disposition': f'attachment; filename="{filename}"; filename*=UTF-8''{quoted_filename}',
+        'Access-Control-Expose-Headers': 'Content-Disposition'
     }
     return StreamingResponse(io.BytesIO(content), media_type='application/octet-stream', headers=headers)
 
